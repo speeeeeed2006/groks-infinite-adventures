@@ -180,5 +180,3 @@ Your project is at `https://github.com/speeeeeed2006/groks-infinite-adventures.g
       ```
 - **Play**: Pick a theme (e.g., "2" for Space Station) and share the starting room and your next choice.
 - **Feedback**: Let me know if it renders correctly or if you want tweaks!
-
-This README is now fully regenerated with proper Markdown for your repo. Add it, push it, and let’s adventure! What theme do you want to start with?
