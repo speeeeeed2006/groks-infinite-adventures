@@ -1,15 +1,17 @@
 # Grok’s Infinite Adventures
 
-A dynamic, text-based adventure game powered by xAI’s Grok API (grok-2-latest), built with Java 21 and Apache HttpClient 5. Choose your adventure theme—Jungle Ruins, Space Station, or Medieval Castle—and embark on an immersive, AI-generated journey where every decision shapes the story.
+A dynamic, graphical adventure game powered by xAI’s Grok API (grok-2-latest), built with Java 21, Swing, and Apache HttpClient 5. Choose your adventure theme—Jungle Ruins, Space Station, Medieval Castle, or a custom theme—and embark on an immersive, AI-generated journey where every decision shapes the story.
 
 ## Features
-- **Customizable Adventures**: Select from multiple themes at the start.
+- **Graphical Interface**: Interactive Swing-based UI with descriptions, options, inventory, and history.
+- **Customizable Adventures**: Select from preset themes or enter your own at startup.
 - **AI-Driven**: Powered by Grok-2-latest for unique, real-time storytelling.
-- **Inventory System**: Collect items as you explore.
-- **Console-Based**: Simple, interactive gameplay via the terminal.
+- **Inventory System**: Collect and use items to influence gameplay (e.g., "use torch").
+- **Save/Load**: Save your progress to any location and load it at startup or in-game.
+- **Fullscreen Support**: Toggle between windowed and fullscreen modes.
 
 ## Prerequisites
-- **Java 21**: Ensure you have JDK 21 installed (e.g., OpenJDK or Oracle JDK).
+- **Java 21**: Install JDK 21 (e.g., [Amazon Corretto 21](https://aws.amazon.com/corretto/) or Oracle JDK).
 - **Maven**: For dependency management and building the project.
 - **Grok API Key**: Obtain from [xAI’s Console](https://console.x.ai) under "API Keys."
 
@@ -21,56 +23,69 @@ A dynamic, text-based adventure game powered by xAI’s Grok API (grok-2-latest)
    ```
 
 2. **Configure the API Key**:
-   * Create a file at src/main/resources/application.properties:
-    ``` properties
-    grok.api.key=your_grok_api_key_here
-    ```
-   * Replace your_grok_api_key_here with your actual Grok API key, obtainable from xAI’s Console under "API Keys."
-   * **Note**: The <span class="bg-warning">.gitignore</span> file ensures this file remains untracked to protect your API key from being committed to the repository.
-
-## Build the Project
-   Use Maven to download dependencies and build the game:
-    
-   ```bash 
-      mvn clean install
+   Create a file at `src/main/resources/application.properties`:
+   ```properties
+   grok.api.key=your_grok_api_key_here
    ```
+   Replace `your_grok_api_key_here` with your Grok API key from xAI’s Console.
+
+   Note: `.gitignore` ensures this file remains untracked to protect your key.
+
+3. **Build the Project**:
+   Use Maven to download dependencies and build:
+   ```bash
+   mvn clean install
+   ```
+
 ## Running the Game
-  **Launch the Game**
+Launch the Game:
+```bash
+mvn exec:java -Dexec.mainClass="com.explorer.game.LostExplorer"
+```
 
-  Run the game using Maven:
-  ```bash
-    mvn exec:java -Dexec.mainClass="com.explorer.game.Game"
-   ```
-## Play
-  * At startup, select an adventure theme by entering 1 (Jungle Ruins), 2 (Space Station), or 3 (Medieval Castle). 
-  * Follow the on-screen prompts, typing the number of your chosen option. 
-  * Enter q to quit at any time.
+## How to Play
+
+### Startup:
+A dialog offers "New Game" or "Load Game":
+- **New Game**: Pick a theme (1: Jungle Ruins, 2: Space Station, 3: Medieval Castle, or custom).
+- **Load Game**: Choose a saved file to resume.
+
+### Gameplay:
+- Click option buttons or type actions (e.g., "use torch") in the input field.
+- Use "Save" to save progress anywhere, "Load" to resume, "Show History" to view past actions.
+- Enter "q" or click "q. Quit" to exit.
+
+### Controls:
+- "Go Fullscreen": Toggle fullscreen mode.
+- Tooltips guide interactions (hover over buttons/input).
 
 ## Example Gameplay
-  Here’s a sample run with the "Space Station" theme:
 
+**Startup dialog:**
 ```
-Welcome to Grok’s Infinite Adventures (Java 21 Edition)!
-Choose your adventure theme:
-1. Jungle Ruins
-2. Space Station
-3. Medieval Castle
-   Enter 1, 2, or 3: 2
+Grok’s Infinite Adventures
+[New Game]  [Load Game]
+```
 
-Your adventure begins...
---------------------------------------------------
-You float into a derelict space station, lights flickering in the void. A control panel hums faintly ahead.
-Options:
-1. Approach the control panel
-2. Explore the dark corridor
-   q. Quit
-   Inventory: []
---------------------------------------------------
-What do you do?
+**After picking "Space Station" (New Game):**
+```
+Grok’s Infinite Adventures - Space Station
+Scene Image: Image coming soon...
+Scene Description: You float into a derelict space station, lights flickering.
+Inventory: [torch]
+Suggested Options: [approach panel] [explore corridor] [q. Quit]
+Your Action: [          ] Submit (e.g., 'use torch' to use an item, 'look around', or anything!)
+[Show History] [Go Fullscreen] [Save] [Load]
+```
+
+**Type "use torch":**
+```
+Scene Description: You light the torch, revealing a hidden hatch.
+Inventory: [map]
+Suggested Options: [open hatch] [look around] [q. Quit]
 ```
 
 ## Project Structure
-
 ```
 groks-infinite-adventures/
 ├── src/
@@ -78,6 +93,8 @@ groks-infinite-adventures/
 │   │   ├── java/
 │   │   │   └── com/explorer/game/
 │   │   │       ├── Game.java
+│   │   │       ├── GameUI.java
+│   │   │       ├── LostExplorer.java
 │   │   │       ├── Player.java
 │   │   │       └── Room.java
 │   │   └── resources/
@@ -88,34 +105,34 @@ groks-infinite-adventures/
 ```
 
 ## Dependencies
-
-* Java 21: The runtime and language version used. 
-* Maven: Build tool (defined in pom.xml). 
-* Apache HttpClient 5: org.apache.httpcomponents.client5:httpclient5:5.3.1 for making API requests. 
-* JSON: org.json:json:20230227 for parsing Grok’s JSON responses. 
-* SLF4J: Logging with org.slf4j:slf4j-api:2.0.13 and org.slf4j:slf4j-simple:2.0.13.
+- **Java 21**: Runtime and language version.
+- **Maven**: Build tool (defined in `pom.xml`).
+- **Apache HttpClient 5**: `org.apache.httpcomponents.client5:httpclient5:5.3.1` for API requests.
+- **JSON**: `org.json:json:20250107` for parsing Grok’s JSON responses.
+- **SLF4J**: Logging with `org.slf4j:slf4j-api:2.0.13` and `org.slf4j:slf4j-simple:2.0.13`.
 
 ## Contributing
-  Contributions are welcome! To contribute:
-1. **Fork this repository.**
-2. **Create a feature branch:**
-  ```bash
-    git checkout -b feature/your-feature-name
-  ```
-3. **Commit your changes:**
-  ```bash
-    git commit -m "Add your feature description"
-  ```
-4. **Push to your branch:**
-  ```bash
-    git commit -m "Add your feature description"
-  ```
-5. **Open a Pull Request on GitHub.**
+Contributions are welcome! To contribute:
+1. Fork this repository.
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add your feature description"
+   ```
+4. Push to your branch:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+5. Open a Pull Request on GitHub.
 
 ## License
+
 This project is licensed under the MIT License.
 
- ```
+```
 MIT License
 
 Copyright (c) 2025 speeeeeed2006
@@ -137,4 +154,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
- ```
+```
