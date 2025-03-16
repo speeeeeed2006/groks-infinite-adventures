@@ -19,6 +19,7 @@ public class Game implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
     private static final String QUIT_COMMAND = "q";
+    private static final String RESTART_COMMAND = "r";
     private static final String API_URL = "https://api.x.ai/v1/chat/completions";
     private static final String API_KEY;
 
@@ -61,7 +62,9 @@ public class Game implements Serializable {
             You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
             This is the starting point. Provide a JSON response with 'description' (initial room description),
             'options' (array of 2-3 options including 'q. Quit'),
-            and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
+            'inventoryUpdates' (array of items to add, if any),
+            'healthUpdates' (int, change in health, optional),
+            and 'scoreUpdates' (int, points to add, optional). Keep it immersive.
             """.formatted(adventureTheme);
 
         currentRoom = fetchRoomFromGrok(prompt);
@@ -74,17 +77,20 @@ public class Game implements Serializable {
         history.add("Started adventure: " + currentRoom.getDescription());
     }
 
-    /*
-    public void start() {
-        // No loop needed; UI drives updates
-    }*/
-
     public Room getCurrentRoom() {
         return currentRoom;
     }
 
     public List<String> getPlayerInventory() {
         return player.getInventory();
+    }
+
+    public int getPlayerHealth() {
+        return player.getHealth();
+    }
+
+    public int getPlayerScore() {
+        return player.getScore();
     }
 
     public String getAdventureTheme() {
@@ -105,6 +111,13 @@ public class Game implements Serializable {
             System.exit(0);
             return;
         }
+        if (choice.equals(RESTART_COMMAND)) {
+            player.adjustHealth(100 - player.getHealth()); // Restore to 100
+            player.addScore(-player.getScore()); // Reset score (assuming negative allowed here)
+            history.clear();
+            initializeStartingRoom();
+            return;
+        }
 
         lastChoice = choice;
         List<String> currentOptions = Arrays.asList(currentRoom.getOptions());
@@ -118,29 +131,34 @@ public class Game implements Serializable {
             }
             prompt = """
                 You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
-                The player is at: '%s'. They chose to use the item: '%s'. Their inventory is: %s.
+                The player is at: '%s'. They chose to use the item: '%s'. Their inventory is: %s, health is: %d, score is: %d.
                 Interpret this action creatively. Return a JSON response with 'description' (new room description),
                 'options' (array of 2-3 options including 'q. Quit'),
-                and 'inventoryUpdates' (array of items to add or remove, e.g., '-torch' to remove torch).
-                Keep it immersive.
-                """.formatted(adventureTheme, currentRoom.getDescription(), item, player.getInventory());
+                'inventoryUpdates' (array of items to add or remove, e.g., '-torch'),
+                'healthUpdates' (int, change in health, optional),
+                and 'scoreUpdates' (int, points to add, optional). Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), item, player.getInventory(), player.getHealth(), player.getScore());
         } else if (currentOptions.contains(choice)) {
             prompt = """
                 You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
-                The player is at: '%s'. They chose the predefined option: '%s'. Their inventory is: %s.
+                The player is at: '%s'. They chose the predefined option: '%s'. Their inventory is: %s, health is: %d, score is: %d.
                 Return a JSON response with 'description' (new room description),
                 'options' (array of 2-3 options including 'q. Quit'),
-                and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
-                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory());
+                'inventoryUpdates' (array of items to add, if any),
+                'healthUpdates' (int, change in health, optional),
+                and 'scoreUpdates' (int, points to add, optional). Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory(), player.getHealth(), player.getScore());
         } else {
             prompt = """
                 You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
-                The player is at: '%s'. They entered a custom action: '%s'. Their inventory is: %s.
+                The player is at: '%s'. They entered a custom action: '%s'. Their inventory is: %s, health is: %d, score is: %d.
                 Interpret this action creatively in the context of the current scene and theme.
                 Return a JSON response with 'description' (new room description based on the action),
                 'options' (array of 2-3 options including 'q. Quit'),
-                and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
-                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory());
+                'inventoryUpdates' (array of items to add, if any),
+                'healthUpdates' (int, change in health, optional),
+                and 'scoreUpdates' (int, points to add, optional). Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory(), player.getHealth(), player.getScore());
         }
 
         lastError = null;
@@ -188,6 +206,8 @@ public class Game implements Serializable {
                 for (int i = 0; i < optionsArray.length(); i++) {
                     options[i] = optionsArray.getString(i);
                 }
+
+                // Inventory updates
                 JSONArray inventoryUpdates = grokData.optJSONArray("inventoryUpdates");
                 if (inventoryUpdates != null) {
                     for (int i = 0; i < inventoryUpdates.length(); i++) {
@@ -198,6 +218,21 @@ public class Game implements Serializable {
                             player.addItem(update);
                         }
                     }
+                }
+
+                // Health updates
+                if (grokData.has("healthUpdates")) {
+                    int healthDelta = grokData.getInt("healthUpdates");
+                    player.adjustHealth(healthDelta);
+                    if (player.getHealth() <= 0) {
+                        return new Room("You’ve succumbed to your wounds. Game Over.", new String[]{"r. Restart", "q. Quit"});
+                    }
+                }
+
+                // Score updates
+                if (grokData.has("scoreUpdates")) {
+                    int scorePoints = grokData.getInt("scoreUpdates");
+                    player.addScore(scorePoints);
                 }
 
                 return new Room(description, options);
@@ -212,7 +247,7 @@ public class Game implements Serializable {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(file))) {
             out.writeObject(this);
         } catch (IOException e) {
-            e.printStackTrace(); // Print full stack trace to console
+            e.printStackTrace();
             throw new IOException("Failed to save to " + file.getAbsolutePath() + ": " + e.getMessage(), e);
         }
     }
@@ -221,7 +256,7 @@ public class Game implements Serializable {
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(file))) {
             return (Game) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace(); // Print full stack trace to console
+            e.printStackTrace();
             System.err.println("Load failed from " + file.getAbsolutePath() + ": " + e.getMessage());
             return null;
         }

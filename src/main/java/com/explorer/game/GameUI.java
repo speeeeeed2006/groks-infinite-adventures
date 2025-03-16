@@ -160,6 +160,9 @@ public class GameUI {
         optionsPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         frame.add(optionsPanel, BorderLayout.EAST);
 
+        // West panel (inventory + stats)
+        JPanel westPanel = new JPanel(new BorderLayout());
+
         // Inventory section
         JPanel inventoryPanel = new JPanel(new BorderLayout());
         JLabel inventoryTitle = new JLabel("Inventory:");
@@ -169,7 +172,20 @@ public class GameUI {
         inventoryPanel.add(new JScrollPane(inventoryList), BorderLayout.CENTER);
         inventoryPanel.setPreferredSize(new Dimension(150, 200));
         inventoryPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        frame.add(inventoryPanel, BorderLayout.WEST);
+        westPanel.add(inventoryPanel, BorderLayout.CENTER);
+
+        // Stats section
+        JPanel statsPanel = new JPanel(new GridLayout(2, 1));
+        JLabel healthLabel = new JLabel("Health: 100");
+        healthLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        JLabel scoreLabel = new JLabel("Score: 0");
+        scoreLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        statsPanel.add(healthLabel);
+        statsPanel.add(scoreLabel);
+        statsPanel.setBorder(BorderFactory.createTitledBorder("Player Stats"));
+        westPanel.add(statsPanel, BorderLayout.SOUTH);
+
+        frame.add(westPanel, BorderLayout.WEST);
 
         // South panel (history, input, fullscreen, save/load)
         JPanel southPanel = new JPanel(new BorderLayout());
@@ -254,6 +270,14 @@ public class GameUI {
 
         inventoryList.setListData(game.getPlayerInventory().toArray(new String[0]));
         historyArea.setText(String.join("\n\n", game.getHistory()));
+
+        // Update stats with color feedback
+        JPanel westPanel = (JPanel) frame.getContentPane().getComponent(3); // WEST is 4th component
+        JPanel statsPanel = (JPanel) westPanel.getComponent(1); // SOUTH component
+        JLabel healthLabel = (JLabel) statsPanel.getComponent(0);
+        healthLabel.setText("Health: " + game.getPlayerHealth());
+        healthLabel.setForeground(game.getPlayerHealth() <= 0 ? Color.RED : Color.BLACK);
+        ((JLabel) statsPanel.getComponent(1)).setText("Score: " + game.getPlayerScore());
 
         optionsButtonsPanel.revalidate();
         optionsButtonsPanel.repaint();
