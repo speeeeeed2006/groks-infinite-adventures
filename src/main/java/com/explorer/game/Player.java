@@ -1,10 +1,14 @@
 package com.explorer.game;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Player {
-    private List<String> inventory;
+public class Player implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L; // Add for serialization consistency
+    private final List<String> inventory;
 
     public Player() {
         this.inventory = new ArrayList<>();
@@ -12,6 +16,10 @@ public class Player {
 
     public void addItem(String item) {
         inventory.add(item);
+    }
+
+    public void removeItem(String item) {
+        inventory.remove(item);
     }
 
     public List<String> getInventory() {

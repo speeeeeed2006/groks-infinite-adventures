@@ -40,3 +40,4 @@ build/
 # Sensitive configuration files
 src/main/resources/application.properties
 # Optionally include a template if
+/.idea/

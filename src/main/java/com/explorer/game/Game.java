@@ -9,12 +9,15 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.InputStream;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
-import java.util.Scanner;
 
-public class Game {
-    private static final String INVALID_CHOICE_MESSAGE = "That’s not a valid option. Please try again.";
+public class Game implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final String QUIT_COMMAND = "q";
     private static final String API_URL = "https://api.x.ai/v1/chat/completions";
     private static final String API_KEY;
@@ -36,38 +39,21 @@ public class Game {
     }
 
     private Room currentRoom;
-    private Player player;
-    private final Scanner scanner;
+    private final Player player;
     private boolean running;
     private String lastChoice;
-    private String adventureTheme;
+    private final String adventureTheme;
+    private final List<String> history;
+    private transient String lastError;
 
-    public Game() {
-        this.scanner = new Scanner(System.in);
+    public Game(String theme) {
         this.player = new Player();
         this.running = true;
         this.lastChoice = "start";
-        this.adventureTheme = chooseAdventureTheme();
+        this.adventureTheme = theme;
+        this.history = new ArrayList<>();
+        this.lastError = null;
         initializeStartingRoom();
-    }
-
-    private String chooseAdventureTheme() {
-        System.out.println("Welcome to Grok’s Infinite Adventures (Java 21 Edition)!");
-        System.out.println("Choose your adventure theme:");
-        System.out.println("  1. Jungle Ruins");
-        System.out.println("  2. Space Station");
-        System.out.println("  3. Medieval Castle");
-        System.out.print("Enter 1, 2, or 3: ");
-
-        String choice = scanner.nextLine().trim();
-        switch (choice) {
-            case "1": return "Jungle Ruins";
-            case "2": return "Space Station";
-            case "3": return "Medieval Castle";
-            default:
-                System.out.println("Invalid choice, defaulting to Jungle Ruins.");
-                return "Jungle Ruins";
-        }
     }
 
     private void initializeStartingRoom() {
@@ -80,62 +66,88 @@ public class Game {
 
         currentRoom = fetchRoomFromGrok(prompt);
         if (currentRoom == null) {
-            // Fallback if API fails
             currentRoom = new Room(
                     "Something went wrong. You’re in a void. Try quitting and restarting.",
                     new String[]{"q. Quit"}
             );
         }
+        history.add("Started adventure: " + currentRoom.getDescription());
     }
 
+    /*
     public void start() {
-        System.out.println("\nYour adventure begins...");
-        while (running) {
-            displayCurrentRoom();
-            String choice = getPlayerChoice();
-            updateGameState(choice);
-        }
-        System.out.println("Thanks for playing!");
-        scanner.close();
+        // No loop needed; UI drives updates
+    }*/
+
+    public Room getCurrentRoom() {
+        return currentRoom;
     }
 
-    private void displayCurrentRoom() {
-        System.out.println("\n--------------------------------------------------");
-        System.out.println(currentRoom.getDescription());
-        System.out.println("Options:");
-        for (String option : currentRoom.getOptions()) {
-            System.out.println("  " + option);
-        }
-        System.out.println("Inventory: " + player.getInventory());
-        System.out.println("--------------------------------------------------");
+    public List<String> getPlayerInventory() {
+        return player.getInventory();
     }
 
-    private String getPlayerChoice() {
-        System.out.print("What do you do? ");
-        return scanner.nextLine().trim().toLowerCase();
+    public String getAdventureTheme() {
+        return adventureTheme;
     }
 
-    private void updateGameState(String choice) {
+    public List<String> getHistory() {
+        return new ArrayList<>(history);
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void updateGameState(String choice) {
         if (choice.equals(QUIT_COMMAND)) {
             running = false;
+            System.exit(0);
             return;
         }
 
         lastChoice = choice;
-        String prompt = """
-            You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
-            The player is at: '%s'. They chose: '%s'. Their inventory is: %s.
-            Return a JSON response with 'description' (new room description),
-            'options' (array of 2-3 options including 'q. Quit'),
-            and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
-            """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory());
+        List<String> currentOptions = Arrays.asList(currentRoom.getOptions());
+        String prompt;
 
+        if (choice.toLowerCase().startsWith("use ")) {
+            String item = choice.substring(4).trim();
+            if (!player.getInventory().contains(item)) {
+                lastError = "You don’t have '" + item + "' in your inventory!";
+                return;
+            }
+            prompt = """
+                You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
+                The player is at: '%s'. They chose to use the item: '%s'. Their inventory is: %s.
+                Interpret this action creatively. Return a JSON response with 'description' (new room description),
+                'options' (array of 2-3 options including 'q. Quit'),
+                and 'inventoryUpdates' (array of items to add or remove, e.g., '-torch' to remove torch).
+                Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), item, player.getInventory());
+        } else if (currentOptions.contains(choice)) {
+            prompt = """
+                You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
+                The player is at: '%s'. They chose the predefined option: '%s'. Their inventory is: %s.
+                Return a JSON response with 'description' (new room description),
+                'options' (array of 2-3 options including 'q. Quit'),
+                and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory());
+        } else {
+            prompt = """
+                You are Grok, powering a text adventure game in Java 21. The adventure theme is: '%s'.
+                The player is at: '%s'. They entered a custom action: '%s'. Their inventory is: %s.
+                Interpret this action creatively in the context of the current scene and theme.
+                Return a JSON response with 'description' (new room description based on the action),
+                'options' (array of 2-3 options including 'q. Quit'),
+                and 'inventoryUpdates' (array of items to add, if any). Keep it immersive.
+                """.formatted(adventureTheme, currentRoom.getDescription(), choice, player.getInventory());
+        }
+
+        lastError = null;
         Room nextRoom = fetchRoomFromGrok(prompt);
         if (nextRoom != null) {
+            history.add("You chose: " + choice + "\nResult: " + nextRoom.getDescription());
             currentRoom = nextRoom;
-        } else {
-            System.out.println(INVALID_CHOICE_MESSAGE);
-            System.out.println("Failed to fetch next room from Grok API.");
         }
     }
 
@@ -155,11 +167,9 @@ public class Game {
             try (CloseableHttpResponse response = client.execute(post)) {
                 int statusCode = response.getCode();
                 String responseString = EntityUtils.toString(response.getEntity());
-                System.out.println("HTTP Status: " + statusCode);
-                System.out.println("Raw API Response: " + responseString);
 
                 if (statusCode != 200 || !responseString.trim().startsWith("{")) {
-                    System.err.println("Invalid response from API: Status " + statusCode + ", Response: " + responseString);
+                    lastError = "API returned invalid response (Status: " + statusCode + ")";
                     return null;
                 }
 
@@ -169,7 +179,6 @@ public class Game {
                         .getJSONObject("message")
                         .getString("content");
 
-                // Remove Markdown code block markers
                 String cleanedContent = content.replace("```json", "").replace("```", "").trim();
                 JSONObject grokData = new JSONObject(cleanedContent);
 
@@ -182,14 +191,38 @@ public class Game {
                 JSONArray inventoryUpdates = grokData.optJSONArray("inventoryUpdates");
                 if (inventoryUpdates != null) {
                     for (int i = 0; i < inventoryUpdates.length(); i++) {
-                        player.addItem(inventoryUpdates.getString(i));
+                        String update = inventoryUpdates.getString(i);
+                        if (update.startsWith("-")) {
+                            player.removeItem(update.substring(1));
+                        } else {
+                            player.addItem(update);
+                        }
                     }
                 }
 
                 return new Room(description, options);
             }
         } catch (Exception e) {
-            System.err.println("Error calling Grok API: " + e.getMessage());
+            lastError = "API call failed: " + e.getMessage();
+            return null;
+        }
+    }
+
+    public void saveGame(File file) throws IOException {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(file))) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            e.printStackTrace(); // Print full stack trace to console
+            throw new IOException("Failed to save to " + file.getAbsolutePath() + ": " + e.getMessage(), e);
+        }
+    }
+
+    public static Game loadGame(File file) {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(file))) {
+            return (Game) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace(); // Print full stack trace to console
+            System.err.println("Load failed from " + file.getAbsolutePath() + ": " + e.getMessage());
             return null;
         }
     }
